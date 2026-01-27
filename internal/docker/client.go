@@ -141,14 +141,14 @@ func (c *Client) InspectContainer(ctx context.Context, containerID string) (type
 }
 
 // GetContainerStats retrieves resource usage statistics for a container
-func (c *Client) GetContainerStats(ctx context.Context, containerID string) (*types.StatsJSON, error) {
+func (c *Client) GetContainerStats(ctx context.Context, containerID string) (*container.StatsResponse, error) {
 	stats, err := c.cli.ContainerStats(ctx, containerID, false) // stream=false for single snapshot
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stats for container %s: %w", containerID, err)
 	}
 	defer stats.Body.Close()
 
-	var v types.StatsJSON
+	var v container.StatsResponse
 	if err := json.NewDecoder(stats.Body).Decode(&v); err != nil {
 		if err == io.EOF {
 			return nil, fmt.Errorf("container %s is not running", containerID)
@@ -261,7 +261,7 @@ func (c *Client) GetAllContainerInfo(ctx context.Context) ([]ContainerInfo, erro
 }
 
 // calculateCPUPercent calculates CPU usage percentage from stats
-func calculateCPUPercent(stats *types.StatsJSON) float64 {
+func calculateCPUPercent(stats *container.StatsResponse) float64 {
 	// CPU calculation based on Docker's algorithm
 	cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
 	systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)

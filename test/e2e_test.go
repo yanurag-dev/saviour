@@ -110,7 +110,7 @@ func TestEndToEnd_MetricsPush(t *testing.T) {
 	defer resp.Body.Close()
 
 	var health map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&health)
+	_ = json.NewDecoder(resp.Body).Decode(&health)
 
 	if health["status"] != "ok" {
 		t.Errorf("Expected health status 'ok', got '%v'", health["status"])

@@ -66,11 +66,11 @@ func TestPushMetrics_Success(t *testing.T) {
 		}
 
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &capturedPayload)
+		_ = json.Unmarshal(body, &capturedPayload)
 		receivedPayload = true
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "success"}`))
+		_, _ = w.Write([]byte(`{"status": "success"}`))
 	}))
 	defer server.Close()
 
@@ -119,7 +119,7 @@ func TestPushMetrics_WithEC2Metadata(t *testing.T) {
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &capturedPayload)
+		_ = json.Unmarshal(body, &capturedPayload)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer testServer.Close()
@@ -161,7 +161,7 @@ func TestSendHeartbeat_Success(t *testing.T) {
 		}
 
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &capturedPayload)
+		_ = json.Unmarshal(body, &capturedPayload)
 		receivedHeartbeat = true
 
 		w.WriteHeader(http.StatusOK)
@@ -441,7 +441,7 @@ func TestSendWithRetry_ExponentialBackoff(t *testing.T) {
 	ctx := context.Background()
 
 	payload := map[string]string{"test": "data"}
-	sender.sendWithRetry(ctx, server.URL, payload)
+	_ = sender.sendWithRetry(ctx, server.URL, payload)
 
 	if len(attemptTimes) < 2 {
 		t.Fatal("Not enough attempts to verify backoff")
@@ -570,7 +570,7 @@ func TestSend_NoAPIKey(t *testing.T) {
 func TestSend_ErrorResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid request"))
+		_, _ = w.Write([]byte("Invalid request"))
 	}))
 	defer server.Close()
 

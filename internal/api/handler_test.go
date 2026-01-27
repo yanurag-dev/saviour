@@ -255,7 +255,7 @@ func TestHandleMetricsPush_GzipCompressed(t *testing.T) {
 	jsonData, _ := json.Marshal(payload)
 	var buf bytes.Buffer
 	gzWriter := gzip.NewWriter(&buf)
-	gzWriter.Write(jsonData)
+	_, _ = gzWriter.Write(jsonData)
 	gzWriter.Close()
 
 	req := httptest.NewRequest("POST", "/api/v1/metrics/push", &buf)
