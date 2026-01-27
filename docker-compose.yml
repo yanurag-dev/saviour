@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Single agent instance
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: saviour-agent:latest
+    container_name: saviour-agent
+    restart: unless-stopped
+    
+    # Mount custom config
+    volumes:
+      - ./agent.yaml:/etc/saviour/agent.yaml:ro
+    
+    # Environment variables (optional overrides)
+    environment:
+      - CONFIG_PATH=/etc/saviour/agent.yaml
+    
+    # Network mode: host gives access to host metrics
+    # Use 'bridge' for containerized apps monitoring
+    network_mode: host
+    
+    # Capabilities needed for full system metrics
+    cap_add:
+      - SYS_ADMIN  # For disk stats
+      - NET_ADMIN  # For network stats
+    
+    # Read-only root filesystem for security
+    read_only: false  # Set to true if not monitoring host processes
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Example: Multiple agents monitoring different aspects
+  agent-app-metrics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: saviour-agent:latest
+    container_name: saviour-agent-app
+    restart: unless-stopped
+    
+    volumes:
+      - ./examples/agent.yaml:/etc/saviour/agent.yaml:ro
+    
+    # Bridge network for containerized monitoring
+    networks:
+      - monitoring
+    
+    depends_on:
+      - agent
+
+networks:
+  monitoring:
+    driver: bridge

@@ -29,14 +29,47 @@ A lightweight, open-source server monitoring tool built in Go, designed for inte
 
 ## Quick Start
 
-### 1. Build the Agent
+### Option 1: Docker (Recommended)
+
+The easiest way to run Saviour is with Docker:
+
+```bash
+# Build and run with docker-compose
+make docker-run
+
+# Or manually
+docker build -t saviour-agent:latest .
+docker run -d \
+  --name saviour-agent \
+  --network host \
+  --cap-add SYS_ADMIN \
+  --cap-add NET_ADMIN \
+  -v $(pwd)/agent.yaml:/etc/saviour/agent.yaml:ro \
+  saviour-agent:latest
+```
+
+View logs:
+```bash
+make docker-logs
+# Or: docker logs -f saviour-agent
+```
+
+Stop:
+```bash
+make docker-stop
+# Or: docker-compose down
+```
+
+### Option 2: Build from Source
+
+#### 1. Build the Agent
 
 ```bash
 go mod tidy
 go build -o bin/saviour-agent ./cmd/agent
 ```
 
-### 2. Create Configuration
+#### 2. Create Configuration
 
 Create an `agent.yaml` file:
 
@@ -56,7 +89,7 @@ alerts:
   disk_threshold: 90.0
 ```
 
-### 3. Run the Agent
+#### 3. Run the Agent
 
 ```bash
 ./bin/saviour-agent -config agent.yaml
@@ -139,6 +172,8 @@ See `examples/agent.yaml` for a complete configuration example with all availabl
 - [x] Alert thresholds
 - [x] Pretty-print output
 - [x] JSON export
+- [x] Docker support with multi-stage builds
+- [x] Docker Compose deployment
 
 ### Roadmap
 - [ ] Process monitoring
@@ -150,10 +185,72 @@ See `examples/agent.yaml` for a complete configuration example with all availabl
 - [ ] Multi-server aggregation
 - [ ] Alert channels (email, Slack, webhooks)
 
+## Docker Deployment
+
+### Docker Image Features
+
+- **Multi-stage build** - Minimal final image (~10MB)
+- **Scratch-based** - Maximum security, no unnecessary packages
+- **Static binary** - No runtime dependencies
+- **Non-root user** - Runs as UID 65534 for security
+- **Host metrics** - Access to host system metrics via network_mode: host
+
+### Docker Configuration
+
+The Docker image expects configuration at `/etc/saviour/agent.yaml`. Mount your config:
+
+```bash
+docker run -d \
+  --name saviour-agent \
+  --network host \
+  --cap-add SYS_ADMIN \
+  --cap-add NET_ADMIN \
+  -v /path/to/your/agent.yaml:/etc/saviour/agent.yaml:ro \
+  saviour-agent:latest
+```
+
+### Docker Compose
+
+For production deployments, use docker-compose:
+
+```yaml
+version: '3.8'
+
+services:
+  agent:
+    image: saviour-agent:latest
+    container_name: saviour-agent
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    volumes:
+      - ./agent.yaml:/etc/saviour/agent.yaml:ro
+```
+
+Run with: `docker-compose up -d`
+
+### Makefile Commands
+
+```bash
+make docker-build    # Build Docker image
+make docker-run      # Build and run with docker-compose
+make docker-stop     # Stop containers
+make docker-clean    # Stop and remove image
+make docker-logs     # View container logs
+make docker-rebuild  # Clean rebuild
+```
+
 ## Requirements
 
+### Native Build
 - Go 1.21 or higher
 - Tested on: macOS, Linux (Windows support planned)
+
+### Docker
+- Docker 20.10+ or Docker Desktop
+- Docker Compose v2+ (optional, for docker-compose.yml)
 
 ## Dependencies
 
