@@ -18,10 +18,15 @@ type Config struct {
 
 // AgentConfig contains agent-specific settings
 type AgentConfig struct {
-	Name            string        `yaml:"name"`
-	ServerURL       string        `yaml:"server_url"`
-	APIKey          string        `yaml:"api_key"`
-	CollectInterval time.Duration `yaml:"collect_interval"`
+	Name              string        `yaml:"name"`
+	ServerURL         string        `yaml:"server_url"`
+	APIKey            string        `yaml:"api_key"`
+	CollectInterval   time.Duration `yaml:"collect_interval"`
+	PushInterval      time.Duration `yaml:"push_interval"`
+	HeartbeatInterval time.Duration `yaml:"heartbeat_interval"`
+	PushTimeout       time.Duration `yaml:"push_timeout"`
+	RetryAttempts     int           `yaml:"retry_attempts"`
+	RetryBackoff      time.Duration `yaml:"retry_backoff"`
 }
 
 // MetricsConfig defines what metrics to collect
@@ -109,6 +114,21 @@ func Load(path string) (*Config, error) {
 	// Set defaults
 	if cfg.Agent.CollectInterval == 0 {
 		cfg.Agent.CollectInterval = 10 * time.Second
+	}
+	if cfg.Agent.PushInterval == 0 {
+		cfg.Agent.PushInterval = 30 * time.Second
+	}
+	if cfg.Agent.HeartbeatInterval == 0 {
+		cfg.Agent.HeartbeatInterval = 30 * time.Second
+	}
+	if cfg.Agent.PushTimeout == 0 {
+		cfg.Agent.PushTimeout = 10 * time.Second
+	}
+	if cfg.Agent.RetryAttempts == 0 {
+		cfg.Agent.RetryAttempts = 3
+	}
+	if cfg.Agent.RetryBackoff == 0 {
+		cfg.Agent.RetryBackoff = 2 * time.Second
 	}
 	if cfg.Agent.Name == "" {
 		hostname, _ := os.Hostname()

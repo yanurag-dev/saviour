@@ -20,7 +20,9 @@ type Agent struct {
 	config          *config.Config
 	systemCollector *collector.SystemCollector
 	dockerCollector *collector.DockerCollector
+	sender          *Sender
 	logger          *log.Logger
+	lastMetrics     *metrics.SystemMetrics // Store last collected metrics for push
 }
 
 // New creates a new agent instance
@@ -52,6 +54,14 @@ func New(cfg *config.Config, logger *log.Logger) (*Agent, error) {
 		logger.Println("✓ Docker monitoring enabled")
 	}
 
+	// Initialize sender if server URL is configured
+	if cfg.Agent.ServerURL != "" {
+		agent.sender = NewSender(cfg.Agent.ServerURL, cfg.Agent.APIKey)
+		logger.Printf("✓ Server push enabled: %s", cfg.Agent.ServerURL)
+	} else {
+		logger.Println("⚠️  No server URL configured - metrics will only be logged locally")
+	}
+
 	return agent, nil
 }
 
@@ -60,8 +70,25 @@ func (a *Agent) Run(ctx context.Context) error {
 	a.logger.Printf("Agent '%s' starting...", a.config.Agent.Name)
 	a.logger.Printf("Collection interval: %v", a.config.Agent.CollectInterval)
 
-	ticker := time.NewTicker(a.config.Agent.CollectInterval)
-	defer ticker.Stop()
+	// Collection ticker
+	collectTicker := time.NewTicker(a.config.Agent.CollectInterval)
+	defer collectTicker.Stop()
+
+	// Push ticker (if server configured)
+	var pushTicker *time.Ticker
+	if a.sender != nil {
+		pushTicker = time.NewTicker(a.config.Agent.PushInterval)
+		defer pushTicker.Stop()
+		a.logger.Printf("Push interval: %v", a.config.Agent.PushInterval)
+	}
+
+	// Heartbeat ticker (if server configured)
+	var heartbeatTicker *time.Ticker
+	if a.sender != nil {
+		heartbeatTicker = time.NewTicker(a.config.Agent.HeartbeatInterval)
+		defer heartbeatTicker.Stop()
+		a.logger.Printf("Heartbeat interval: %v", a.config.Agent.HeartbeatInterval)
+	}
 
 	// Collect immediately on start
 	if err := a.collectAndProcess(); err != nil {
@@ -74,12 +101,55 @@ func (a *Agent) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			a.logger.Println("Agent shutting down...")
 			return ctx.Err()
-		case <-ticker.C:
+
+		case <-collectTicker.C:
 			if err := a.collectAndProcess(); err != nil {
 				a.logger.Printf("Error collecting metrics: %v", err)
 			}
+
+		case <-func() <-chan time.Time {
+			if pushTicker != nil {
+				return pushTicker.C
+			}
+			return make(chan time.Time) // Never fires
+		}():
+			if a.lastMetrics != nil {
+				if err := a.pushMetrics(ctx); err != nil {
+					a.logger.Printf("Error pushing metrics: %v", err)
+				} else {
+					a.logger.Println("✓ Metrics pushed to server")
+				}
+			}
+
+		case <-func() <-chan time.Time {
+			if heartbeatTicker != nil {
+				return heartbeatTicker.C
+			}
+			return make(chan time.Time) // Never fires
+		}():
+			if err := a.sendHeartbeat(ctx); err != nil {
+				a.logger.Printf("Error sending heartbeat: %v", err)
+			} else {
+				a.logger.Println("♥ Heartbeat sent")
+			}
 		}
 	}
+}
+
+// pushMetrics sends the last collected metrics to the server
+func (a *Agent) pushMetrics(ctx context.Context) error {
+	if a.sender == nil {
+		return nil
+	}
+	return a.sender.PushMetrics(ctx, a.lastMetrics)
+}
+
+// sendHeartbeat sends a heartbeat to the server
+func (a *Agent) sendHeartbeat(ctx context.Context) error {
+	if a.sender == nil {
+		return nil
+	}
+	return a.sender.SendHeartbeat(ctx, a.config.Agent.Name)
 }
 
 func (a *Agent) collectAndProcess() error {
@@ -129,7 +199,10 @@ func (a *Agent) collectAndProcess() error {
 		}
 	}
 
-	// For now, just log the metrics (later we'll send to server)
+	// Store metrics for push
+	a.lastMetrics = m
+
+	// Process and log metrics
 	if err := a.processMetrics(m); err != nil {
 		return fmt.Errorf("processing failed: %w", err)
 	}
