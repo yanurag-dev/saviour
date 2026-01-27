@@ -14,7 +14,7 @@ Saviour is a lightweight, internal monitoring tool designed to track health and 
 
 ## System Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │         Saviour Core (On-Prem VM / Cloud)               │
 │  ┌──────────────────────────────────────────────────┐  │
@@ -235,7 +235,7 @@ docker run -d \
 
 #### 2.1 Metrics Ingestion API 🔴
 **Endpoints**:
-```
+```http
 POST   /api/v1/metrics/push      # Agents push metrics here
 POST   /api/v1/heartbeat          # Heartbeat endpoint
 GET    /api/v1/health             # Server health check
@@ -432,7 +432,7 @@ alerting:
 
 #### 2.5 REST API (for Dashboard) 🔴
 **Endpoints**:
-```
+```http
 GET    /api/v1/servers                    # List all servers
 GET    /api/v1/servers/:id                # Server details
 GET    /api/v1/servers/:id/containers     # Containers on server
@@ -556,7 +556,7 @@ CREATE TABLE alerts (
 #### 3.2 Pages
 
 **Overview Dashboard** (`/`):
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │  Saviour Monitoring                                  │
 ├─────────────────────────────────────────────────────┤
@@ -578,7 +578,7 @@ CREATE TABLE alerts (
 ```
 
 **Server Detail Page** (`/servers/:id`):
-```
+```text
 ec2-prod-web-01 (i-1234567890abcdef0)
 Region: us-east-1  |  Type: t3.large  |  Uptime: 23d 14h
 
@@ -597,7 +597,7 @@ Containers (8 running)
 ```
 
 **Container List** (`/containers`):
-```
+```text
 All Containers Across Servers
 
 Filter: [All] [Running] [Stopped] [Unhealthy]
@@ -614,7 +614,7 @@ Search: [______________________]
 ```
 
 **Alerts Page** (`/alerts`):
-```
+```text
 Active Alerts (3)
 
 🚨 CRITICAL: ec2-prod-db-01 offline
