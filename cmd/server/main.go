@@ -103,7 +103,7 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"service":"saviour-server","status":"running"}`))
+		_, _ = w.Write([]byte(`{"service":"saviour-server","status":"running"}`))
 	})
 
 	// Apply middleware

@@ -87,10 +87,12 @@ func handleMetricsPush(w http.ResponseWriter, r *http.Request) {
 	// Respond with success
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
 		"message": "Metrics received",
-	})
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }
 
 func handleHeartbeat(w http.ResponseWriter, r *http.Request) {
@@ -125,20 +127,24 @@ func handleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	// Respond with success
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
 		"message": "Heartbeat received",
 		"timestamp": time.Now().Format(time.RFC3339),
-	})
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "healthy",
 		"time":   time.Now().Format(time.RFC3339),
-	})
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }
 
 func maskToken(auth string) string {

@@ -85,10 +85,12 @@ func (h *Handler) HandleMetricsPush(w http.ResponseWriter, r *http.Request) {
 	// Return success
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":  "success",
 		"message": "Metrics received",
-	})
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }
 
 // HandleHeartbeat handles POST /api/v1/heartbeat
@@ -120,9 +122,11 @@ func (h *Handler) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	// Return success
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status": "success",
-	})
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+	}
 }
 
 // HandleHealth handles GET /api/v1/health
@@ -143,7 +147,9 @@ func (h *Handler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		log.Printf("Error encoding health response: %v", err)
+	}
 }
 
 // readBody handles reading and decompressing request body

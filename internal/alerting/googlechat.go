@@ -126,20 +126,6 @@ func (g *GoogleChatNotifier) buildMessage(alert *Alert) map[string]interface{} {
 	return card
 }
 
-// getSeverityColor returns color based on severity
-func (g *GoogleChatNotifier) getSeverityColor(severity string) string {
-	switch severity {
-	case "critical":
-		return "#FF0000" // Red
-	case "warning":
-		return "#FFA500" // Orange
-	case "info":
-		return "#0000FF" // Blue
-	default:
-		return "#808080" // Gray
-	}
-}
-
 // getSeverityIcon returns emoji icon based on severity
 func (g *GoogleChatNotifier) getSeverityIcon(severity string) string {
 	switch severity {
