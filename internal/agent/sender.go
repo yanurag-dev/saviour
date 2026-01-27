@@ -37,9 +37,10 @@ func NewSender(serverURL, apiKey string) *Sender {
 
 // MetricsPayload represents the data sent to the server
 type MetricsPayload struct {
-	AgentName string                `json:"agent_name"`
-	Timestamp time.Time             `json:"timestamp"`
-	System    *metrics.SystemMetrics `json:"metrics"`
+	AgentName     string                `json:"agent_name"`
+	Timestamp     time.Time             `json:"timestamp"`
+	EC2Metadata   interface{}           `json:"ec2_metadata,omitempty"`
+	SystemMetrics *metrics.SystemMetrics `json:"system_metrics"`
 }
 
 // HeartbeatPayload represents a lightweight heartbeat
@@ -57,9 +58,9 @@ func (s *Sender) PushMetrics(ctx context.Context, m *metrics.SystemMetrics) erro
 	}
 
 	payload := MetricsPayload{
-		AgentName: m.AgentName,
-		Timestamp: m.Timestamp,
-		System:    m,
+		AgentName:     m.AgentName,
+		Timestamp:     m.Timestamp,
+		SystemMetrics: m,
 	}
 
 	endpoint := s.serverURL + "/api/v1/metrics/push"
