@@ -1,0 +1,43 @@
+# Test server configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+# Authentication
+auth:
+  api_keys:
+    - key: "test-agent-key-12345"
+      name: "test-agent"
+      scopes: ["metrics:write", "heartbeat:write"]
+    
+    - key: "test-dashboard-key-67890"
+      name: "test-dashboard"
+      scopes: ["metrics:read", "alerts:read"]
+
+# Alerting Configuration
+alerting:
+  enabled: true
+  check_interval: 30s
+  heartbeat_timeout: 2m
+  
+  # Alert deduplication
+  deduplication_enabled: true
+  deduplication_window: 5m
+  
+  # System alert thresholds
+  system_cpu_threshold: 80.0
+  system_memory_threshold: 85.0
+  system_disk_threshold: 90.0
+
+# Google Chat Integration
+google_chat:
+  enabled: false  # Using console notifier for testing
+  webhook_url: ""
+  dashboard_url: ""
+
+# CORS Configuration
+cors:
+  enabled: true
+  dev_mode: true  # Allow all origins in dev
+  allowed_origins: []  # Production: ["https://dashboard.company.com"]

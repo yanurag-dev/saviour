@@ -7,24 +7,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/anurag/saviour/internal/server"
 	"github.com/anurag/saviour/pkg/metrics"
 )
 
 // Sender handles pushing metrics to the central server
 type Sender struct {
-	serverURL   string
-	apiKey      string
-	client      *http.Client
-	maxRetries  int
+	serverURL    string
+	apiKey       string
+	client       *http.Client
+	maxRetries   int
 	retryBackoff time.Duration
+	ec2Client    *EC2MetadataClient
+	ec2Metadata  *server.EC2Metadata
 }
 
 // NewSender creates a new metrics sender
 func NewSender(serverURL, apiKey string) *Sender {
-	return &Sender{
+	sender := &Sender{
 		serverURL: serverURL,
 		apiKey:    apiKey,
 		client: &http.Client{
@@ -32,14 +36,31 @@ func NewSender(serverURL, apiKey string) *Sender {
 		},
 		maxRetries:   3,
 		retryBackoff: 2 * time.Second,
+		ec2Client:    NewEC2MetadataClient(),
 	}
+
+	// Try to fetch EC2 metadata on initialization (best effort)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if IsRunningOnEC2(ctx) {
+		if metadata, err := sender.ec2Client.GetEC2Metadata(ctx); err == nil {
+			sender.ec2Metadata = metadata
+			log.Printf("Running on EC2 instance: %s (%s)", metadata.InstanceID, metadata.InstanceType)
+		} else {
+			log.Printf("Failed to fetch EC2 metadata: %v", err)
+		}
+	}
+
+	return sender
 }
 
 // MetricsPayload represents the data sent to the server
 type MetricsPayload struct {
-	AgentName string                `json:"agent_name"`
-	Timestamp time.Time             `json:"timestamp"`
-	System    *metrics.SystemMetrics `json:"metrics"`
+	AgentName     string                 `json:"agent_name"`
+	Timestamp     time.Time              `json:"timestamp"`
+	EC2Metadata   *server.EC2Metadata    `json:"ec2_metadata,omitempty"`
+	SystemMetrics *metrics.SystemMetrics `json:"system_metrics"`
 }
 
 // HeartbeatPayload represents a lightweight heartbeat
@@ -57,9 +78,10 @@ func (s *Sender) PushMetrics(ctx context.Context, m *metrics.SystemMetrics) erro
 	}
 
 	payload := MetricsPayload{
-		AgentName: m.AgentName,
-		Timestamp: m.Timestamp,
-		System:    m,
+		AgentName:     m.AgentName,
+		Timestamp:     m.Timestamp,
+		EC2Metadata:   s.ec2Metadata, // May be nil if not on EC2
+		SystemMetrics: m,
 	}
 
 	endpoint := s.serverURL + "/api/v1/metrics/push"
