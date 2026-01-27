@@ -1,0 +1,29 @@
+# Agent configuration for testing with server
+
+agent:
+  name: "test-agent-1"
+  server_url: "http://localhost:8080"
+  api_key: "test-agent-key-12345"
+  
+  collect_interval: 15s
+  push_interval: 20s
+  heartbeat_interval: 10s
+  
+  push_timeout: 10s
+  retry_attempts: 3
+  retry_backoff: 2s
+
+metrics:
+  system: true
+  
+  docker:
+    enabled: true
+    socket: "/var/run/docker.sock"
+    
+    # Monitor all containers by default
+    monitor_all: true
+
+alerts:
+  cpu_threshold: 80.0
+  memory_threshold: 85.0
+  disk_threshold: 90.0
