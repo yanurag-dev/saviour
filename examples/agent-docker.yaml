@@ -1,0 +1,82 @@
+# Saviour Agent Configuration with Docker Monitoring
+
+agent:
+  # Agent name (defaults to hostname if not specified)
+  name: "my-server"
+  
+  # Central server URL (for future use when server is implemented)
+  server_url: "https://saviour.company.com"
+  
+  # API key for authentication (for future use)
+  api_key: "${SAVIOUR_API_KEY}"
+  
+  # How often to collect metrics
+  collect_interval: 30s
+
+# System metrics
+metrics:
+  # Collect system metrics (CPU, memory, disk, network)
+  system: true
+  
+  # Disk mount points to monitor (empty = all mounts)
+  disk_mounts:
+    - "/"
+    - "/var/lib/docker"
+  
+  # Docker container monitoring
+  docker:
+    # Enable Docker monitoring
+    enabled: true
+    
+    # Docker socket path
+    socket: "/var/run/docker.sock"
+    
+    # Monitor all containers (default: true)
+    monitor_all: true
+    
+    # Optional: Filter containers to monitor
+    filters:
+      # Monitor only containers with these labels
+      labels:
+        - "monitor=true"
+        - "env=production"
+      
+      # Monitor containers matching name patterns (glob syntax)
+      names:
+        - "api-*"
+        - "web-*"
+        - "worker-*"
+      
+      # Monitor containers matching image patterns
+      images:
+        - "mycompany/*"
+        - "nginx:*"
+    
+    # Container alert thresholds
+    alerts:
+      # Default thresholds for all containers
+      default:
+        cpu_threshold: 80.0        # Alert when container CPU > 80%
+        memory_threshold: 90.0     # Alert when container memory > 90%
+        restart_threshold: 5       # Alert when restart count > 5
+        restart_window: "300s"     # Within 300 seconds (5 minutes)
+      
+      # Per-container overrides
+      overrides:
+        # Database containers can use more memory
+        - name: "postgres"
+          memory_threshold: 95.0
+        
+        # Redis should use less CPU
+        - name: "redis"
+          cpu_threshold: 60.0
+        
+        # Critical services should have lower restart threshold
+        - name: "api-gateway"
+          restart_threshold: 3
+
+# System alert thresholds
+alerts:
+  cpu_threshold: 80.0       # Alert when system CPU > 80%
+  memory_threshold: 85.0    # Alert when system memory > 85%
+  disk_threshold: 90.0      # Alert when disk usage > 90%

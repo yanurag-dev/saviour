@@ -1,0 +1,26 @@
+# Simple test configuration for Docker monitoring
+agent:
+  name: "docker-test-agent"
+  collect_interval: 10s
+
+metrics:
+  system: true
+  disk_mounts:
+    - "/"
+  
+  docker:
+    enabled: true
+    socket: "/var/run/docker.sock"
+    monitor_all: true
+    
+    alerts:
+      default:
+        cpu_threshold: 80.0
+        memory_threshold: 90.0
+        restart_threshold: 5
+        restart_window: "300s"
+
+alerts:
+  cpu_threshold: 80.0
+  memory_threshold: 85.0
+  disk_threshold: 90.0

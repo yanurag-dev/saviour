@@ -33,7 +33,10 @@ func main() {
 	}
 
 	// Create agent
-	a := agent.New(cfg, logger)
+	a, err := agent.New(cfg, logger)
+	if err != nil {
+		logger.Fatalf("Failed to create agent: %v", err)
+	}
 
 	// Set up context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
