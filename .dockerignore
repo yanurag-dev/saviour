@@ -1,0 +1,64 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+PROJECT_DESIGN.md
+CLAUDE.md
+
+# Build artifacts
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+*_test.go
+*.test
+*.out
+
+# Config files with secrets
+agent.yaml
+server.yaml
+*.local.yaml
+
+# Logs
+*.log
+logs/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Dependencies (will be downloaded in build)
+vendor/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Scripts (not needed in container)
+scripts/
+Makefile
