@@ -12,6 +12,11 @@ import (
 	"github.com/anurag/saviour/pkg/metrics"
 )
 
+const (
+	// MaxRequestSize is the maximum allowed request body size (10MB)
+	MaxRequestSize = 10 * 1024 * 1024 // 10MB
+)
+
 // Handler manages HTTP endpoints for the server
 type Handler struct {
 	state *server.StateStore
@@ -30,6 +35,16 @@ func (h *Handler) HandleMetricsPush(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Enforce maximum request size
+	if r.ContentLength > MaxRequestSize {
+		log.Printf("Request too large: %d bytes (max: %d)", r.ContentLength, MaxRequestSize)
+		http.Error(w, "Request entity too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	// Limit request body size to prevent DoS/gzip bombs
+	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestSize)
 
 	// Read and potentially decompress body
 	body, err := h.readBody(r)

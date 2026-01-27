@@ -27,6 +27,44 @@ type DiskMetrics struct {
 	UsedPercent float64 `json:"used_percent"`
 }
 
+// Clone creates a deep copy of ServerState to prevent data races
+func (s *ServerState) Clone() *ServerState {
+	if s == nil {
+		return nil
+	}
+
+	clone := &ServerState{
+		AgentName:     s.AgentName,
+		EC2InstanceID: s.EC2InstanceID,
+		LastSeen:      s.LastSeen,
+		Status:        s.Status,
+		SystemMetrics: s.SystemMetrics, // SystemMetrics contains primitives and can be copied
+	}
+
+	// Deep copy containers slice
+	if len(s.Containers) > 0 {
+		clone.Containers = make([]ContainerState, len(s.Containers))
+		copy(clone.Containers, s.Containers)
+	}
+
+	// Deep copy active alerts slice
+	if len(s.ActiveAlerts) > 0 {
+		clone.ActiveAlerts = make([]Alert, len(s.ActiveAlerts))
+		for i, alert := range s.ActiveAlerts {
+			clone.ActiveAlerts[i] = alert
+			// Deep copy the Details map if present
+			if alert.Details != nil {
+				clone.ActiveAlerts[i].Details = make(map[string]interface{})
+				for k, v := range alert.Details {
+					clone.ActiveAlerts[i].Details[k] = v
+				}
+			}
+		}
+	}
+
+	return clone
+}
+
 // ContainerState tracks container state for change detection
 type ContainerState struct {
 	ID              string    `json:"id"`

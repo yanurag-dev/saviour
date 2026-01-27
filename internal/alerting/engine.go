@@ -118,9 +118,17 @@ func (e *Engine) Start() {
 		return
 	}
 
-	log.Printf("Starting alert engine (check interval: %v)", e.config.CheckInterval)
+	// Validate check interval to prevent panic in time.NewTicker
+	checkInterval := e.config.CheckInterval
+	if checkInterval <= 0 {
+		log.Printf("Warning: Invalid check interval (%v), using default 30s", checkInterval)
+		checkInterval = 30 * time.Second
+		e.config.CheckInterval = checkInterval
+	}
 
-	ticker := time.NewTicker(e.config.CheckInterval)
+	log.Printf("Starting alert engine (check interval: %v)", checkInterval)
+
+	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {

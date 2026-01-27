@@ -35,3 +35,9 @@ google_chat:
   enabled: false  # Using console notifier for testing
   webhook_url: ""
   dashboard_url: ""
+
+# CORS Configuration
+cors:
+  enabled: true
+  dev_mode: true  # Allow all origins in dev
+  allowed_origins: []  # Production: ["https://dashboard.company.com"]

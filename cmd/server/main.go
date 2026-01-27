@@ -107,7 +107,24 @@ func main() {
 	})
 
 	// Apply middleware
-	finalHandler := api.LoggingMiddleware(api.CORSMiddleware(mux))
+	var finalHandler http.Handler = mux
+
+	// Apply CORS middleware if enabled
+	if cfg.CORS.Enabled {
+		corsConfig := &api.CORSConfig{
+			AllowedOrigins: cfg.CORS.AllowedOrigins,
+			DevMode:        cfg.CORS.DevMode,
+		}
+		finalHandler = api.CORSMiddleware(corsConfig)(finalHandler)
+		if cfg.CORS.DevMode {
+			log.Println("CORS enabled in development mode (allowing all origins)")
+		} else {
+			log.Printf("CORS enabled with allowed origins: %v", cfg.CORS.AllowedOrigins)
+		}
+	}
+
+	// Apply logging middleware
+	finalHandler = api.LoggingMiddleware(finalHandler)
 
 	// Start HTTP server
 	httpServer := &http.Server{

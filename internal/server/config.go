@@ -14,6 +14,14 @@ type Config struct {
 	Auth       AuthConfig       `yaml:"auth"`
 	Alerting   AlertingConfig   `yaml:"alerting"`
 	GoogleChat GoogleChatConfig `yaml:"google_chat"`
+	CORS       CORSConfig       `yaml:"cors"`
+}
+
+// CORSConfig holds CORS settings
+type CORSConfig struct {
+	Enabled        bool     `yaml:"enabled"`
+	AllowedOrigins []string `yaml:"allowed_origins"`
+	DevMode        bool     `yaml:"dev_mode"`
 }
 
 // AlertingConfig holds alerting configuration
@@ -117,6 +125,35 @@ func (c *Config) Validate() error {
 
 	if c.GoogleChat.Enabled && c.GoogleChat.WebhookURL == "" {
 		return fmt.Errorf("Google Chat webhook URL is required when enabled")
+	}
+
+	// Validate alerting configuration
+	if c.Alerting.Enabled {
+		if c.Alerting.CheckInterval <= 0 {
+			return fmt.Errorf("alerting check_interval must be > 0, got: %v", c.Alerting.CheckInterval)
+		}
+		if c.Alerting.HeartbeatTimeout <= 0 {
+			return fmt.Errorf("alerting heartbeat_timeout must be > 0, got: %v", c.Alerting.HeartbeatTimeout)
+		}
+		if c.Alerting.DeduplicationEnabled && c.Alerting.DeduplicationWindow <= 0 {
+			return fmt.Errorf("alerting deduplication_window must be > 0 when deduplication is enabled, got: %v", c.Alerting.DeduplicationWindow)
+		}
+
+		// Validate threshold percentages (0-100)
+		if c.Alerting.SystemCPUThreshold < 0 || c.Alerting.SystemCPUThreshold > 100 {
+			return fmt.Errorf("alerting system_cpu_threshold must be between 0 and 100, got: %.2f", c.Alerting.SystemCPUThreshold)
+		}
+		if c.Alerting.SystemMemoryThreshold < 0 || c.Alerting.SystemMemoryThreshold > 100 {
+			return fmt.Errorf("alerting system_memory_threshold must be between 0 and 100, got: %.2f", c.Alerting.SystemMemoryThreshold)
+		}
+		if c.Alerting.SystemDiskThreshold < 0 || c.Alerting.SystemDiskThreshold > 100 {
+			return fmt.Errorf("alerting system_disk_threshold must be between 0 and 100, got: %.2f", c.Alerting.SystemDiskThreshold)
+		}
+	}
+
+	// Validate CORS configuration
+	if c.CORS.Enabled && !c.CORS.DevMode && len(c.CORS.AllowedOrigins) == 0 {
+		return fmt.Errorf("CORS enabled in production mode but no allowed_origins configured")
 	}
 
 	return nil

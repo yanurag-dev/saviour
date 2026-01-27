@@ -90,20 +90,48 @@ func (ac *AuthConfig) hasScopes(keyScopes, requiredScopes []string) bool {
 	return true
 }
 
-// CORS middleware for development
-func CORSMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+// CORSConfig holds CORS configuration
+type CORSConfig struct {
+	AllowedOrigins []string
+	DevMode        bool
+}
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
+// CORSMiddleware handles CORS with configurable origins
+func CORSMiddleware(config *CORSConfig) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+
+			// In dev mode, allow all origins
+			if config.DevMode {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else if origin != "" && isAllowedOrigin(origin, config.AllowedOrigins) {
+				// In production, only allow whitelisted origins
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+			}
+
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// isAllowedOrigin checks if an origin is in the allowed list
+func isAllowedOrigin(origin string, allowedOrigins []string) bool {
+	for _, allowed := range allowedOrigins {
+		if origin == allowed {
+			return true
 		}
-
-		next.ServeHTTP(w, r)
-	})
+	}
+	return false
 }
 
 // LoggingMiddleware logs all requests

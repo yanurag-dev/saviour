@@ -29,6 +29,9 @@ func (s *StateStore) UpdateAgent(state *ServerState) {
 	if exists {
 		// Preserve previous container states for change detection
 		state.Containers = s.mergeContainerStates(existing.Containers, state.Containers)
+		
+		// Preserve active alerts from previous state
+		state.ActiveAlerts = existing.ActiveAlerts
 	}
 
 	// Update status based on last seen
@@ -67,23 +70,29 @@ func (s *StateStore) mergeContainerStates(previous, current []ContainerState) []
 	return merged
 }
 
-// GetAgent retrieves agent state by name
+// GetAgent retrieves agent state by name (returns a copy to prevent data races)
 func (s *StateStore) GetAgent(agentName string) (*ServerState, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	state, exists := s.agents[agentName]
-	return state, exists
+	if !exists {
+		return nil, false
+	}
+	
+	// Return a deep copy to prevent data races
+	return state.Clone(), true
 }
 
-// GetAllAgents returns all agent states
+// GetAllAgents returns all agent states (returns copies to prevent data races)
 func (s *StateStore) GetAllAgents() []*ServerState {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	states := make([]*ServerState, 0, len(s.agents))
 	for _, state := range s.agents {
-		states = append(states, state)
+		// Return deep copies to prevent data races
+		states = append(states, state.Clone())
 	}
 	return states
 }
@@ -118,7 +127,8 @@ func (s *StateStore) CheckOfflineAgents(timeout time.Duration) []*ServerState {
 	for _, state := range s.agents {
 		if state.Status == "online" && now.Sub(state.LastSeen) > timeout {
 			state.Status = "offline"
-			offline = append(offline, state)
+			// Return a deep copy to prevent data races
+			offline = append(offline, state.Clone())
 		}
 	}
 
@@ -161,7 +171,7 @@ func (s *StateStore) ResolveAlert(alertID string) {
 	}
 }
 
-// GetActiveAlerts returns all active alerts
+// GetActiveAlerts returns all active alerts (returns copies to prevent data races)
 func (s *StateStore) GetActiveAlerts() []*Alert {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -169,13 +179,15 @@ func (s *StateStore) GetActiveAlerts() []*Alert {
 	active := make([]*Alert, 0)
 	for _, alert := range s.alerts {
 		if alert.Status == "active" {
-			active = append(active, alert)
+			// Return a deep copy to prevent data races
+			alertCopy := *alert
+			active = append(active, &alertCopy)
 		}
 	}
 	return active
 }
 
-// GetAlertsByAgent returns all alerts for a specific agent
+// GetAlertsByAgent returns all alerts for a specific agent (returns copies to prevent data races)
 func (s *StateStore) GetAlertsByAgent(agentName string) []*Alert {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -183,17 +195,25 @@ func (s *StateStore) GetAlertsByAgent(agentName string) []*Alert {
 	alerts := make([]*Alert, 0)
 	for _, alert := range s.alerts {
 		if alert.AgentName == agentName {
-			alerts = append(alerts, alert)
+			// Return a deep copy to prevent data races
+			alertCopy := *alert
+			alerts = append(alerts, &alertCopy)
 		}
 	}
 	return alerts
 }
 
-// GetAlert retrieves a specific alert by ID
+// GetAlert retrieves a specific alert by ID (returns a copy to prevent data races)
 func (s *StateStore) GetAlert(alertID string) (*Alert, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	alert, exists := s.alerts[alertID]
-	return alert, exists
+	if !exists {
+		return nil, false
+	}
+	
+	// Return a deep copy to prevent data races
+	alertCopy := *alert
+	return &alertCopy, true
 }
