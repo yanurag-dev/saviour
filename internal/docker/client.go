@@ -243,16 +243,21 @@ func (c *Client) GetAllContainerInfo(ctx context.Context) ([]ContainerInfo, erro
 	}
 
 	infos := make([]ContainerInfo, 0, len(containers))
+	var firstErr error
+
 	for _, container := range containers {
 		info, err := c.GetContainerInfo(ctx, container.ID)
 		if err != nil {
-			// Log error but continue with other containers
+			// Capture first error but continue with other containers
+			if firstErr == nil {
+				firstErr = err
+			}
 			continue
 		}
 		infos = append(infos, *info)
 	}
 
-	return infos, nil
+	return infos, firstErr
 }
 
 // calculateCPUPercent calculates CPU usage percentage from stats
