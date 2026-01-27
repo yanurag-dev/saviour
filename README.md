@@ -1,87 +1,210 @@
-# Saviour - Server Monitoring Tool
+# Saviour - Internal Monitoring & Alerting Platform
 
-A lightweight, open-source server monitoring tool built in Go, designed for internal teams to monitor infrastructure health, performance, and availability.
+[![Go Version](https://img.shields.io/badge/Go-1.24%2B-blue)](https://golang.org)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/yanurag-dev/saviour)
 
-## Features (MVP)
+**Saviour** is a lightweight, push-based monitoring and alerting platform designed for tracking Docker containers and system health across multiple EC2 instances. It provides centralized monitoring, intelligent alerting via Google Chat, and real-time health visibility.
 
-✅ **System Metrics Collection**
-- CPU usage (overall and per-core)
-- Memory usage (RAM and swap)
-- Disk usage (per mount point)
-- Network I/O statistics
-- System information (OS, uptime, kernel)
+---
 
-✅ **Real-time Monitoring**
-- Configurable collection intervals
-- Live metrics display with emoji-rich output
-- JSON output for integration
+## 🎯 Key Features
 
-✅ **Alert Thresholds**
-- CPU usage alerts
-- Memory usage alerts
-- Disk usage alerts
-- Configurable thresholds per metric
+### ✅ **Phase 1: Docker Container Monitoring** (Complete)
+- 🐳 **Container Metrics**: CPU, memory, network I/O, disk I/O, restart counts
+- 🏥 **Health Tracking**: Container state changes, health checks, OOM detection
+- 🎯 **Flexible Filtering**: Monitor by labels, names, images, or all containers
+- 📊 **Per-Container Alerts**: Customizable thresholds with pattern matching
 
-✅ **YAML Configuration**
-- Simple, readable configuration
-- Sensible defaults
-- Per-agent customization
+### ✅ **Phase 2: Agent Push Mechanism** (Complete)
+- 🔐 **Secure Communication**: HTTPS with Bearer token authentication
+- 🗜️ **Compression**: Automatic gzip compression (10MB+ → ~14KB)
+- 🔄 **Retry Logic**: Exponential backoff with configurable attempts
+- 💓 **Heartbeat**: Separate heartbeat mechanism for offline detection
+- ⚡ **Independent Intervals**: Collect (15s), push (20s), heartbeat (10s)
 
-## Quick Start
+### ✅ **Phase 3: Central Server & Alerting** (Complete)
+- 🏢 **In-Memory State Store**: Fast, thread-safe state management
+- 🔔 **Alert Detection Engine**: System and container threshold monitoring
+- 🚫 **Deduplication**: Time-based alert deduplication (prevents spam)
+- 💬 **Google Chat Integration**: Rich card notifications with severity icons
+- 🔒 **Security Hardened**: Request limits, CORS whitelist, config validation
+- ☁️ **EC2 Auto-Discovery**: Automatic instance metadata fetching (IMDSv2)
 
-### Option 1: Docker (Recommended)
+### 🔜 **Phase 4: Web Dashboard** (Planned)
+- 📈 Multi-agent overview
+- 🔍 Container search and filtering
+- 📜 Alert history and acknowledgment
+- 📊 Real-time metrics visualization
 
-The easiest way to run Saviour is with Docker:
+---
 
-```bash
-# Build and run with docker-compose
-make docker-run
+## 🏗️ Architecture
 
-# Or manually
-docker build -t saviour-agent:latest .
-docker run -d \
-  --name saviour-agent \
-  --network host \
-  --cap-add SYS_ADMIN \
-  --cap-add NET_ADMIN \
-  -v $(pwd)/agent.yaml:/etc/saviour/agent.yaml:ro \
-  saviour-agent:latest
+```
+┌─────────────────────────────────────────────────────────┐
+│         Saviour Core (Central Server)                   │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  Alert Engine  │  State Store  │  REST API      │  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────────┬───────────────────────────────────┘
+                      │ HTTPS POST         │ Webhook
+                      ↑                    ↓
+         ┌────────────┼──────────┐   ┌─────────────────┐
+         │            │          │   │  Google Chat    │
+    ┌────┴───┐   ┌───┴────┐  ┌──┴──────┐
+    │ Agent  │   │ Agent  │  │ Agent   │
+    │ EC2-1  │   │ EC2-2  │  │ EC2-N   │
+    │ 🐳🐳🐳 │   │ 🐳🐳🐳 │  │ 🐳🐳🐳  │
+    └────────┘   └────────┘  └─────────┘
 ```
 
-View logs:
+**Push-Based Design Benefits**:
+- ✅ No firewall configuration needed (agents only need outbound HTTPS)
+- ✅ Real-time metrics delivery
+- ✅ Simple agent deployment
+- ✅ Automatic offline detection via heartbeat
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Go 1.24+
+- Docker (optional, for containerized deployment)
+- Docker socket access (for container monitoring)
+
+### 1. Build from Source
+
 ```bash
-make docker-logs
-# Or: docker logs -f saviour-agent
-```
+# Clone repository
+git clone https://github.com/yanurag-dev/saviour.git
+cd saviour
 
-Stop:
-```bash
-make docker-stop
-# Or: docker-compose down
-```
+# Build agent and server
+make build
 
-### Option 2: Build from Source
-
-#### 1. Build the Agent
-
-```bash
-go mod tidy
+# Or build individually
 go build -o bin/saviour-agent ./cmd/agent
+go build -o bin/saviour-server ./cmd/server
 ```
 
-#### 2. Create Configuration
+### 2. Configure & Run Server
 
-Create an `agent.yaml` file:
+```bash
+# Copy example configuration
+cp examples/server.yaml server.yaml
+
+# Edit configuration (add API keys, configure alerts)
+vim server.yaml
+
+# Start server
+./bin/saviour-server -config server.yaml
+```
+
+Server will start on `http://0.0.0.0:8080` with endpoints:
+- `POST /api/v1/metrics/push` - Receive metrics from agents
+- `POST /api/v1/heartbeat` - Heartbeat tracking
+- `GET /api/v1/health` - Health check
+
+### 3. Configure & Run Agent
+
+```bash
+# Copy example configuration
+cp examples/agent-docker.yaml agent.yaml
+
+# Edit configuration (add server URL and API key)
+vim agent.yaml
+
+# Start agent
+./bin/saviour-agent -config agent.yaml
+```
+
+Agent will:
+- Collect system and Docker metrics every 15s
+- Push metrics to server every 20s
+- Send heartbeat every 10s
+
+---
+
+## 📋 Configuration
+
+### Server Configuration (`server.yaml`)
+
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+auth:
+  api_keys:
+    - key: "your-secure-api-key-here"
+      name: "production-agents"
+      scopes: ["metrics:write", "heartbeat:write"]
+
+alerting:
+  enabled: true
+  check_interval: 30s
+  heartbeat_timeout: 2m
+  deduplication_enabled: true
+  deduplication_window: 5m
+  system_cpu_threshold: 80.0
+  system_memory_threshold: 85.0
+  system_disk_threshold: 90.0
+
+google_chat:
+  enabled: true
+  webhook_url: "${GOOGLE_CHAT_WEBHOOK_URL}"
+  dashboard_url: "https://saviour.company.com"
+
+cors:
+  enabled: false  # Enable for dashboard
+  dev_mode: false
+  allowed_origins:
+    - "https://dashboard.company.com"
+```
+
+### Agent Configuration (`agent.yaml`)
 
 ```yaml
 agent:
-  name: "my-server"
-  collect_interval: 10s
+  name: "ec2-prod-web-01"  # Or "auto" for EC2 instance ID
+  server_url: "https://saviour.company.com"
+  api_key: "${SAVIOUR_API_KEY}"
+  
+  collect_interval: 15s
+  push_interval: 20s
+  heartbeat_interval: 10s
+  
+  push_timeout: 10s
+  retry_attempts: 3
+  retry_backoff: 2s
 
 metrics:
   system: true
-  disk_mounts:
-    - "/"
+  
+  docker:
+    enabled: true
+    socket: "/var/run/docker.sock"
+    monitor_all: true
+    
+    filters:
+      labels: ["monitor=true"]
+      names: ["api-*", "web-*"]
+      images: ["mycompany/*"]
+    
+    alerts:
+      default:
+        cpu_threshold: 80.0
+        memory_threshold: 90.0
+        restart_threshold: 5
+        restart_window: 300s
+      
+      overrides:
+        - name: "postgres"
+          memory_threshold: 95.0
+        - name: "redis"
+          cpu_threshold: 70.0
 
 alerts:
   cpu_threshold: 80.0
@@ -89,184 +212,233 @@ alerts:
   disk_threshold: 90.0
 ```
 
-#### 3. Run the Agent
+See [examples/](examples/) for more configuration examples.
+
+---
+
+## 🔒 Security Features
+
+### Authentication
+- **Bearer Token**: All agent requests require valid API key
+- **Scope-Based**: Different scopes for metrics, heartbeat, and dashboard access
+- **Multiple Keys**: Support for different key sets (agents, dashboards, admin)
+
+### Request Protection
+- **Size Limits**: 10MB maximum request size
+- **Gzip Bomb Protection**: http.MaxBytesReader prevents DoS
+- **CORS Whitelist**: Configurable allowed origins (no wildcards in production)
+
+### Configuration Validation
+- **Fail-Fast**: Invalid config prevents server startup
+- **Duration Validation**: All durations must be > 0
+- **Threshold Validation**: Percentages must be 0-100
+- **Required Fields**: API keys, scopes validated on startup
+
+### Thread Safety
+- **Deep Copies**: All state getters return snapshots
+- **Data Race Free**: Proper mutex locking throughout
+- **Concurrent Safe**: Multiple goroutines can safely access state
+
+---
+
+## 📊 Monitoring Capabilities
+
+### System Metrics
+- **CPU**: Usage percentage, per-core usage, load averages
+- **Memory**: Total, used, available, swap usage and percentages
+- **Disk**: Per-mount usage, I/O statistics, inode usage
+- **Network**: Bytes sent/received, packet counts, errors, drops
+
+### Container Metrics (Per Container)
+- **Identity**: ID, name, image, labels
+- **State**: Running, exited, paused, restarting, with status
+- **Health**: Docker health check status (healthy, unhealthy, starting)
+- **Resources**: CPU %, memory usage/limit/%, network I/O, disk I/O
+- **Lifecycle**: Created time, started time, exit code, OOM killed flag
+- **Reliability**: Restart count, uptime, process count (PIDs)
+
+### Alert Types
+
+#### System Alerts
+- 🔴 **High CPU**: CPU usage > threshold
+- 🔴 **High Memory**: Memory usage > threshold
+- 🔴 **High Disk**: Disk usage > threshold
+- 🔴 **Agent Offline**: No heartbeat for > timeout
+
+#### Container Alerts
+- 💀 **Container Stopped**: Running → Exited/Dead
+- 🏥 **Container Unhealthy**: Health check failing
+- ⚠️ **High CPU**: Container CPU > threshold
+- 🚨 **High Memory**: Container memory > threshold
+- 💥 **OOM Killed**: Container killed by OOM
+- 🔄 **Restart Loop**: Too many restarts in time window
+
+---
+
+## 📦 Deployment Options
+
+### Binary Deployment
 
 ```bash
-./bin/saviour-agent -config agent.yaml
+# On each EC2 instance
+curl -L https://github.com/yanurag-dev/saviour/releases/latest/download/saviour-agent -o /usr/local/bin/saviour-agent
+chmod +x /usr/local/bin/saviour-agent
+
+# Create systemd service
+sudo tee /etc/systemd/system/saviour-agent.service > /dev/null <<EOF
+[Unit]
+Description=Saviour Monitoring Agent
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=root
+Environment="SAVIOUR_API_KEY=your-api-key-here"
+ExecStart=/usr/local/bin/saviour-agent -config /etc/saviour/agent.yaml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable saviour-agent
+sudo systemctl start saviour-agent
 ```
 
-## Example Output
-
-```
-[saviour-agent] 📊 Metrics collected at 2026-01-27T20:45:01+05:30
-[saviour-agent] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[saviour-agent] 🖥️  System: my-server (darwin darwin)
-[saviour-agent]    Uptime: 11d 6h 26m
-[saviour-agent] 💻 CPU Usage: 21.88%
-[saviour-agent]    Load Avg: 9.83 (1m) | 6.16 (5m) | 8.07 (15m)
-[saviour-agent] 🧠 Memory: 83.04% used (6.6 GiB / 8.0 GiB)
-[saviour-agent]    Swap: 90.60% used (11.8 GiB / 13.0 GiB)
-[saviour-agent] 💾 Disk Usage:
-[saviour-agent]    /: 89.72% used (204.8 GiB / 228.3 GiB)
-[saviour-agent] 🌐 Network: ↑ 8.3 GiB sent | ↓ 88.0 GiB received
-```
-
-When thresholds are exceeded:
-
-```
-[saviour-agent] ⚠️  ALERT: Memory usage (86.85%) exceeds threshold (85.00%)
-```
-
-## Project Structure
-
-```
-saviour/
-├── cmd/
-│   └── agent/          # Agent binary
-├── internal/
-│   ├── agent/          # Agent logic
-│   ├── collector/      # Metric collectors
-│   └── config/         # Configuration parsing
-├── pkg/
-│   └── metrics/        # Shared metric types
-├── examples/           # Example configs
-└── bin/                # Compiled binaries
-```
-
-## Configuration Reference
-
-See `examples/agent.yaml` for a complete configuration example with all available options.
-
-### Agent Settings
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `agent.name` | string | hostname | Agent identifier |
-| `agent.collect_interval` | duration | 10s | How often to collect metrics |
-| `agent.server_url` | string | - | Central server URL (future use) |
-| `agent.api_key` | string | - | API key for authentication (future use) |
-
-### Metrics Settings
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `metrics.system` | bool | false | Enable system metrics collection |
-| `metrics.disk_mounts` | []string | all | Specific mount points to monitor |
-
-### Alert Thresholds
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `alerts.cpu_threshold` | float | 0 | CPU usage percentage (0-100) |
-| `alerts.memory_threshold` | float | 0 | Memory usage percentage (0-100) |
-| `alerts.disk_threshold` | float | 0 | Disk usage percentage (0-100) |
-
-## Development Status
-
-**Current Phase**: MVP Agent (✅ Complete)
-
-### Completed
-- [x] Project structure
-- [x] System metrics collection (CPU, memory, disk, network)
-- [x] YAML configuration
-- [x] Alert thresholds
-- [x] Pretty-print output
-- [x] JSON export
-- [x] Docker support with multi-stage builds
-- [x] Docker Compose deployment
-
-### Roadmap
-- [ ] Process monitoring
-- [ ] Health checks (HTTP, TCP, ping)
-- [ ] Central server with REST API
-- [ ] Agent-to-server communication
-- [ ] Time-series data storage
-- [ ] Web dashboard
-- [ ] Multi-server aggregation
-- [ ] Alert channels (email, Slack, webhooks)
-
-## Docker Deployment
-
-### Docker Image Features
-
-- **Multi-stage build** - Minimal final image (~10MB)
-- **Scratch-based** - Maximum security, no unnecessary packages
-- **Static binary** - No runtime dependencies
-- **Non-root user** - Runs as UID 65534 for security
-- **Host metrics** - Access to host system metrics via network_mode: host
-
-### Docker Configuration
-
-The Docker image expects configuration at `/etc/saviour/agent.yaml`. Mount your config:
+### Docker Deployment
 
 ```bash
+# Agent as Docker container
 docker run -d \
   --name saviour-agent \
+  --restart unless-stopped \
   --network host \
-  --cap-add SYS_ADMIN \
-  --cap-add NET_ADMIN \
-  -v /path/to/your/agent.yaml:/etc/saviour/agent.yaml:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v /etc/saviour/agent.yaml:/etc/saviour/agent.yaml:ro \
+  -e SAVIOUR_API_KEY=your-api-key-here \
   saviour-agent:latest
 ```
 
 ### Docker Compose
 
-For production deployments, use docker-compose:
-
 ```yaml
 version: '3.8'
 
 services:
-  agent:
-    image: saviour-agent:latest
-    container_name: saviour-agent
-    restart: unless-stopped
-    network_mode: host
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
+  saviour-server:
+    image: saviour-server:latest
+    ports:
+      - "8080:8080"
     volumes:
+      - ./server.yaml:/etc/saviour/server.yaml:ro
+    environment:
+      - GOOGLE_CHAT_WEBHOOK_URL=${GOOGLE_CHAT_WEBHOOK_URL}
+    restart: unless-stopped
+
+  saviour-agent:
+    image: saviour-agent:latest
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./agent.yaml:/etc/saviour/agent.yaml:ro
+    environment:
+      - SAVIOUR_API_KEY=${SAVIOUR_API_KEY}
+    restart: unless-stopped
+    depends_on:
+      - saviour-server
 ```
-
-Run with: `docker-compose up -d`
-
-### Makefile Commands
-
-```bash
-make docker-build    # Build Docker image
-make docker-run      # Build and run with docker-compose
-make docker-stop     # Stop containers
-make docker-clean    # Stop and remove image
-make docker-logs     # View container logs
-make docker-rebuild  # Clean rebuild
-```
-
-## Requirements
-
-### Native Build
-- Go 1.21 or higher
-- Tested on: macOS, Linux (Windows support planned)
-
-### Docker
-- Docker 20.10+ or Docker Desktop
-- Docker Compose v2+ (optional, for docker-compose.yml)
-
-## Dependencies
-
-- [gopsutil](https://github.com/shirou/gopsutil) - Cross-platform system metrics
-- [yaml.v3](https://github.com/go-yaml/yaml) - YAML parsing
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Contributing
-
-Contributions welcome! This project is in early development. See PROJECT_DESIGN.md for the full vision.
 
 ---
 
-**Status**: MVP Agent Complete
-**Version**: 0.1.0
-**Last Updated**: 2026-01-27
+## 🧪 Development
+
+### Prerequisites
+- Go 1.24+
+- Docker (for testing container monitoring)
+- Make
+
+### Build Commands
+
+```bash
+# Build both agent and server
+make build
+
+# Build agent only
+make build-agent
+
+# Build server only
+make build-server
+
+# Run tests
+make test
+
+# Run linter
+make lint
+
+# Clean build artifacts
+make clean
+```
+
+### Running Locally
+
+```bash
+# Terminal 1: Start server
+go run cmd/server/main.go -config examples/test-configs/server-test.yaml
+
+# Terminal 2: Start agent
+go run cmd/agent/main.go -config examples/test-configs/agent-server-test.yaml
+
+# Terminal 3: Check health
+curl http://localhost:8080/api/v1/health | jq
+```
+
+---
+
+## 📚 Documentation
+
+- **[USER_GUIDE.md](USER_GUIDE.md)** - Comprehensive user guide
+- **[PROJECT_DESIGN.md](PROJECT_DESIGN.md)** - Detailed design document
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[PROGRESS.md](PROGRESS.md)** - Development progress tracking
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with Go standard library and minimal dependencies
+- Docker SDK for container monitoring
+- gopsutil for system metrics
+- Google Chat for alerting
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yanurag-dev/saviour/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yanurag-dev/saviour/discussions)
+- **Email**: support@saviour.dev
+
+---
+
+**Made with ❤️ for reliable infrastructure monitoring**
