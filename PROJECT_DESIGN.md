@@ -225,7 +225,7 @@ docker run -d \
   --network host \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -v /etc/saviour/agent.yaml:/etc/saviour/agent.yaml:ro \
-  -e SAVIOUR_API_KEY=sk_xxxxx \
+  -e SAVIOUR_API_KEY=YOUR_API_KEY_HERE \
   saviour-agent:latest
 ```
 
@@ -790,11 +790,11 @@ server:
 # Authentication
 auth:
   api_keys:
-    - key: "sk_prod_xxxxxxxxxxxxx"
+    - key: "YOUR_AGENT_API_KEY_HERE"
       name: "production-agents"
       scopes: ["metrics:write", "heartbeat:write"]
     
-    - key: "sk_dash_xxxxxxxxxxxxx"
+    - key: "YOUR_DASHBOARD_API_KEY_HERE"
       name: "dashboard"
       scopes: ["metrics:read", "alerts:read"]
 
@@ -877,7 +877,7 @@ After=network.target docker.service
 [Service]
 Type=simple
 User=root
-Environment="SAVIOUR_API_KEY=sk_prod_xxxxx"
+Environment="SAVIOUR_API_KEY=YOUR_API_KEY_HERE"
 ExecStart=/usr/local/bin/saviour-agent -config /etc/saviour/agent.yaml
 Restart=always
 RestartSec=10
@@ -901,7 +901,7 @@ docker run -d \
   --network host \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -v /etc/saviour/agent.yaml:/etc/saviour/agent.yaml:ro \
-  -e SAVIOUR_API_KEY=sk_prod_xxxxx \
+  -e SAVIOUR_API_KEY=YOUR_API_KEY_HERE \
   saviour-agent:latest
 ```
 
