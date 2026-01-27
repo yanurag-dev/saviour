@@ -4,13 +4,14 @@ import "time"
 
 // SystemMetrics contains all system-level metrics
 type SystemMetrics struct {
-	Timestamp   time.Time       `json:"timestamp"`
-	AgentName   string          `json:"agent_name"`
-	CPU         CPUMetrics      `json:"cpu"`
-	Memory      MemoryMetrics   `json:"memory"`
-	Disk        []DiskMetrics   `json:"disk"`
-	Network     NetworkMetrics  `json:"network"`
-	SystemInfo  SystemInfo      `json:"system_info"`
+	Timestamp   time.Time          `json:"timestamp"`
+	AgentName   string             `json:"agent_name"`
+	CPU         CPUMetrics         `json:"cpu"`
+	Memory      MemoryMetrics      `json:"memory"`
+	Disk        []DiskMetrics      `json:"disk"`
+	Network     NetworkMetrics     `json:"network"`
+	SystemInfo  SystemInfo         `json:"system_info"`
+	Containers  []ContainerMetrics `json:"containers,omitempty"` // Docker container metrics
 }
 
 // CPUMetrics contains CPU usage information
@@ -77,4 +78,44 @@ type ProcessMetrics struct {
 	CPUPercent  float64 `json:"cpu_percent"`
 	MemoryMB    uint64  `json:"memory_mb"`
 	MemoryPercent float64 `json:"memory_percent"`
+}
+
+// ContainerMetrics contains Docker container metrics
+type ContainerMetrics struct {
+	// Identity
+	ID      string            `json:"id"`
+	Name    string            `json:"name"`
+	Image   string            `json:"image"`
+	ImageID string            `json:"image_id"`
+	Labels  map[string]string `json:"labels,omitempty"`
+
+	// State
+	State         string    `json:"state"`          // running, exited, paused, restarting, dead
+	Status        string    `json:"status"`         // Up 2 hours, Exited (0) 5 minutes ago
+	Health        string    `json:"health"`         // healthy, unhealthy, starting, none
+	ExitCode      int       `json:"exit_code"`      // Exit code when stopped
+	OOMKilled     bool      `json:"oom_killed"`     // Was killed due to OOM
+	RestartCount  int       `json:"restart_count"`  // Number of times restarted
+	
+	// Timestamps
+	Created   time.Time `json:"created"`
+	StartedAt time.Time `json:"started_at"`
+	FinishedAt time.Time `json:"finished_at,omitempty"`
+
+	// Resource Metrics
+	CPUPercent    float64 `json:"cpu_percent"`
+	MemoryUsage   uint64  `json:"memory_usage"`    // bytes
+	MemoryLimit   uint64  `json:"memory_limit"`    // bytes
+	MemoryPercent float64 `json:"memory_percent"`
+
+	// Network I/O
+	NetworkRxBytes uint64 `json:"network_rx_bytes"`
+	NetworkTxBytes uint64 `json:"network_tx_bytes"`
+
+	// Block I/O
+	BlockReadBytes  uint64 `json:"block_read_bytes"`
+	BlockWriteBytes uint64 `json:"block_write_bytes"`
+
+	// PIDs
+	PIDs uint64 `json:"pids"` // Number of processes in container
 }

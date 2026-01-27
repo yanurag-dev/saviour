@@ -1,0 +1,46 @@
+# Test configuration for pattern matching in container alerts
+agent:
+  name: "pattern-test-agent"
+  collect_interval: 10s
+
+metrics:
+  system: true
+  disk_mounts:
+    - "/"
+  
+  docker:
+    enabled: true
+    socket: "/var/run/docker.sock"
+    monitor_all: true
+    
+    alerts:
+      default:
+        cpu_threshold: 50.0
+        memory_threshold: 50.0
+        restart_threshold: 2
+      
+      # Test pattern matching
+      overrides:
+        # Exact match
+        - name: "redis"
+          cpu_threshold: 90.0
+          memory_threshold: 95.0
+        
+        # Pattern: all saviour agents
+        - name: "saviour-*"
+          cpu_threshold: 95.0
+          memory_threshold: 98.0
+        
+        # Pattern: all services
+        - name: "*-service"
+          cpu_threshold: 70.0
+          memory_threshold: 85.0
+        
+        # Pattern: all workers
+        - name: "worker-*"
+          restart_threshold: 5
+
+alerts:
+  cpu_threshold: 80.0
+  memory_threshold: 85.0
+  disk_threshold: 90.0

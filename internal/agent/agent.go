@@ -5,27 +5,54 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anurag/saviour/internal/collector"
 	"github.com/anurag/saviour/internal/config"
+	"github.com/anurag/saviour/internal/docker"
 	"github.com/anurag/saviour/pkg/metrics"
 )
 
 // Agent represents the monitoring agent
 type Agent struct {
-	config    *config.Config
-	collector *collector.SystemCollector
-	logger    *log.Logger
+	config          *config.Config
+	systemCollector *collector.SystemCollector
+	dockerCollector *collector.DockerCollector
+	logger          *log.Logger
 }
 
 // New creates a new agent instance
-func New(cfg *config.Config, logger *log.Logger) *Agent {
-	return &Agent{
-		config:    cfg,
-		collector: collector.NewSystemCollector(cfg.Agent.Name, cfg.Metrics.DiskMounts),
-		logger:    logger,
+func New(cfg *config.Config, logger *log.Logger) (*Agent, error) {
+	agent := &Agent{
+		config:          cfg,
+		systemCollector: collector.NewSystemCollector(cfg.Agent.Name, cfg.Metrics.DiskMounts),
+		logger:          logger,
 	}
+
+	// Initialize Docker collector if enabled
+	if cfg.Metrics.Docker.Enabled {
+		filterConfig := docker.FilterConfig{
+			MonitorAll: cfg.Metrics.Docker.MonitorAll,
+			Labels:     cfg.Metrics.Docker.Filters.Labels,
+			Names:      cfg.Metrics.Docker.Filters.Names,
+			Images:     cfg.Metrics.Docker.Filters.Images,
+		}
+
+		dockerCollector, err := collector.NewDockerCollector(
+			cfg.Metrics.Docker.Socket,
+			filterConfig,
+			logger,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize Docker collector: %w", err)
+		}
+		agent.dockerCollector = dockerCollector
+		logger.Println("✓ Docker monitoring enabled")
+	}
+
+	return agent, nil
 }
 
 // Run starts the agent's main loop
@@ -56,10 +83,50 @@ func (a *Agent) Run(ctx context.Context) error {
 }
 
 func (a *Agent) collectAndProcess() error {
-	// Collect metrics
-	m, err := a.collector.Collect()
+	ctx := context.Background()
+	
+	// Collect system metrics
+	m, err := a.systemCollector.Collect()
 	if err != nil {
 		return fmt.Errorf("collection failed: %w", err)
+	}
+
+	// Collect Docker container metrics if enabled
+	if a.dockerCollector != nil {
+		containers, err := a.dockerCollector.Collect(ctx)
+		if err != nil {
+			a.logger.Printf("Warning: Docker collection failed: %v", err)
+		} else {
+			// Convert docker.ContainerInfo to metrics.ContainerMetrics
+			m.Containers = make([]metrics.ContainerMetrics, len(containers))
+			for i, c := range containers {
+				m.Containers[i] = metrics.ContainerMetrics{
+					ID:              c.ID,
+					Name:            c.Name,
+					Image:           c.Image,
+					ImageID:         c.ImageID,
+					Labels:          c.Labels,
+					State:           c.State,
+					Status:          c.Status,
+					Health:          c.Health,
+					ExitCode:        c.ExitCode,
+					OOMKilled:       c.OOMKilled,
+					RestartCount:    c.RestartCount,
+					Created:         c.Created,
+					StartedAt:       c.StartedAt,
+					FinishedAt:      c.FinishedAt,
+					CPUPercent:      c.CPUPercent,
+					MemoryUsage:     c.MemoryUsage,
+					MemoryLimit:     c.MemoryLimit,
+					MemoryPercent:   c.MemoryPercent,
+					NetworkRxBytes:  c.NetworkRxBytes,
+					NetworkTxBytes:  c.NetworkTxBytes,
+					BlockReadBytes:  c.BlockReadBytes,
+					BlockWriteBytes: c.BlockWriteBytes,
+					PIDs:            c.PIDs,
+				}
+			}
+		}
 	}
 
 	// For now, just log the metrics (later we'll send to server)
@@ -82,23 +149,99 @@ func (a *Agent) processMetrics(m *metrics.SystemMetrics) error {
 }
 
 func (a *Agent) checkAlerts(m *metrics.SystemMetrics) {
-	// CPU threshold
+	// System alerts
 	if m.CPU.UsagePercent > a.config.Alerts.CPUThreshold {
 		a.logger.Printf("⚠️  ALERT: CPU usage (%.2f%%) exceeds threshold (%.2f%%)",
 			m.CPU.UsagePercent, a.config.Alerts.CPUThreshold)
 	}
 
-	// Memory threshold
 	if m.Memory.UsedPercent > a.config.Alerts.MemoryThreshold {
 		a.logger.Printf("⚠️  ALERT: Memory usage (%.2f%%) exceeds threshold (%.2f%%)",
 			m.Memory.UsedPercent, a.config.Alerts.MemoryThreshold)
 	}
 
-	// Disk threshold
 	for _, disk := range m.Disk {
 		if disk.UsedPercent > a.config.Alerts.DiskThreshold {
 			a.logger.Printf("⚠️  ALERT: Disk usage on %s (%.2f%%) exceeds threshold (%.2f%%)",
 				disk.MountPoint, disk.UsedPercent, a.config.Alerts.DiskThreshold)
+		}
+	}
+
+	// Container alerts
+	if a.dockerCollector != nil {
+		a.checkContainerAlerts(m.Containers)
+	}
+}
+
+func (a *Agent) checkContainerAlerts(containers []metrics.ContainerMetrics) {
+	defaultThreshold := a.config.Metrics.Docker.Alerts.Default
+
+	for _, container := range containers {
+		// Get threshold for this container (check overrides)
+		cpuThreshold := defaultThreshold.CPUThreshold
+		memThreshold := defaultThreshold.MemoryThreshold
+		restartThreshold := defaultThreshold.RestartThreshold
+
+		for _, override := range a.config.Metrics.Docker.Alerts.Overrides {
+			// Support glob-style pattern matching (e.g., "api-*", "worker-*")
+			matched := false
+			if strings.Contains(override.Name, "*") || strings.Contains(override.Name, "?") {
+				// Use glob pattern matching
+				if match, err := filepath.Match(override.Name, container.Name); err == nil && match {
+					matched = true
+				}
+			} else {
+				// Exact match
+				matched = (container.Name == override.Name)
+			}
+
+			if matched {
+				if override.CPUThreshold > 0 {
+					cpuThreshold = override.CPUThreshold
+				}
+				if override.MemoryThreshold > 0 {
+					memThreshold = override.MemoryThreshold
+				}
+				if override.RestartThreshold > 0 {
+					restartThreshold = override.RestartThreshold
+				}
+				// Don't break - allow multiple patterns to match and last one wins
+			}
+		}
+
+		// Container state alerts
+		if container.State == "exited" {
+			a.logger.Printf("💀 ALERT: Container '%s' stopped (exit code: %d)",
+				container.Name, container.ExitCode)
+		}
+
+		if container.Health == "unhealthy" {
+			a.logger.Printf("🏥 ALERT: Container '%s' is unhealthy",
+				container.Name)
+		}
+
+		if container.OOMKilled {
+			a.logger.Printf("💥 ALERT: Container '%s' was OOM killed",
+				container.Name)
+		}
+
+		// Resource alerts (only for running containers)
+		if container.State == "running" {
+			if container.CPUPercent > cpuThreshold {
+				a.logger.Printf("⚠️  ALERT: Container '%s' CPU (%.2f%%) exceeds threshold (%.2f%%)",
+					container.Name, container.CPUPercent, cpuThreshold)
+			}
+
+			if container.MemoryPercent > memThreshold {
+				a.logger.Printf("⚠️  ALERT: Container '%s' memory (%.2f%%) exceeds threshold (%.2f%%)",
+					container.Name, container.MemoryPercent, memThreshold)
+			}
+		}
+
+		// Restart count alert
+		if container.RestartCount > restartThreshold {
+			a.logger.Printf("🔄 ALERT: Container '%s' restart count (%d) exceeds threshold (%d)",
+				container.Name, container.RestartCount, restartThreshold)
 		}
 	}
 }
@@ -144,11 +287,54 @@ func (a *Agent) logMetrics(m *metrics.SystemMetrics) {
 		formatBytes(m.Network.BytesSent),
 		formatBytes(m.Network.BytesRecv))
 
+	// Docker containers
+	if len(m.Containers) > 0 {
+		a.logger.Printf("🐳 Containers: %d monitored", len(m.Containers))
+		for _, container := range m.Containers {
+			statusIcon := getContainerStatusIcon(container.State, container.Health)
+			if container.State == "running" {
+				a.logger.Printf("   %s %s: CPU %.1f%% | Mem %s (%.1f%%) | Restarts: %d",
+					statusIcon,
+					container.Name,
+					container.CPUPercent,
+					formatBytes(container.MemoryUsage),
+					container.MemoryPercent,
+					container.RestartCount)
+			} else {
+				a.logger.Printf("   %s %s: %s (exit code: %d)",
+					statusIcon,
+					container.Name,
+					container.State,
+					container.ExitCode)
+			}
+		}
+	}
+
 	// Output JSON for debugging
 	if a.config.Agent.Name != "" {
 		jsonData, _ := json.MarshalIndent(m, "", "  ")
 		a.logger.Printf("\n📄 JSON Output:\n%s\n", string(jsonData))
 	}
+}
+
+func getContainerStatusIcon(state, health string) string {
+	if state == "running" {
+		if health == "healthy" {
+			return "🟢"
+		} else if health == "unhealthy" {
+			return "🔴"
+		} else if health == "starting" {
+			return "🟡"
+		}
+		return "🟢" // No health check defined
+	} else if state == "exited" {
+		return "⚫"
+	} else if state == "restarting" {
+		return "🔄"
+	} else if state == "paused" {
+		return "⏸️"
+	}
+	return "⚪"
 }
 
 // Helper functions
