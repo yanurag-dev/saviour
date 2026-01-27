@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anurag/saviour/internal/collector"
@@ -181,7 +183,19 @@ func (a *Agent) checkContainerAlerts(containers []metrics.ContainerMetrics) {
 		restartThreshold := defaultThreshold.RestartThreshold
 
 		for _, override := range a.config.Metrics.Docker.Alerts.Overrides {
-			if container.Name == override.Name {
+			// Support glob-style pattern matching (e.g., "api-*", "worker-*")
+			matched := false
+			if strings.Contains(override.Name, "*") || strings.Contains(override.Name, "?") {
+				// Use glob pattern matching
+				if match, err := filepath.Match(override.Name, container.Name); err == nil && match {
+					matched = true
+				}
+			} else {
+				// Exact match
+				matched = (container.Name == override.Name)
+			}
+
+			if matched {
 				if override.CPUThreshold > 0 {
 					cpuThreshold = override.CPUThreshold
 				}
@@ -191,7 +205,7 @@ func (a *Agent) checkContainerAlerts(containers []metrics.ContainerMetrics) {
 				if override.RestartThreshold > 0 {
 					restartThreshold = override.RestartThreshold
 				}
-				break
+				// Don't break - allow multiple patterns to match and last one wins
 			}
 		}
 

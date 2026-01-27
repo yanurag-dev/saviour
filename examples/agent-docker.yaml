@@ -61,19 +61,26 @@ metrics:
         restart_threshold: 5       # Alert when restart count > 5
         restart_window: "300s"     # Within 300 seconds (5 minutes)
       
-      # Per-container overrides
+      # Per-container overrides (supports glob patterns)
       overrides:
         # Database containers can use more memory
         - name: "postgres"
           memory_threshold: 95.0
         
-        # Redis should use less CPU
-        - name: "redis"
-          cpu_threshold: 60.0
+        # All API containers should use less CPU
+        - name: "api-*"
+          cpu_threshold: 70.0
         
-        # Critical services should have lower restart threshold
-        - name: "api-gateway"
+        # All worker containers have different thresholds
+        - name: "worker-*"
+          cpu_threshold: 85.0
           restart_threshold: 3
+        
+        # Pattern matching examples:
+        # - "redis" - exact match
+        # - "api-*" - matches api-v1, api-v2, api-gateway
+        # - "*-service" - matches user-service, auth-service
+        # - "prod-*-db" - matches prod-user-db, prod-auth-db
 
 # System alert thresholds
 alerts:
