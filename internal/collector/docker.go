@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/anurag/saviour/internal/docker"
 )
@@ -21,9 +22,13 @@ func NewDockerCollector(socketPath string, filterConfig docker.FilterConfig, log
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
-	// Test connection
-	ctx := context.Background()
+	// Test connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	if err := client.Ping(ctx); err != nil {
+		// Close the client on ping failure
+		client.Close()
 		return nil, fmt.Errorf("failed to connect to Docker daemon: %w", err)
 	}
 
