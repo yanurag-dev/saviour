@@ -131,11 +131,11 @@ func TestEndToEnd_AgentSender(t *testing.T) {
 		if r.URL.Path == "/api/v1/metrics/push" {
 			receivedMetrics = true
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"success"}`))
+			_, _ = w.Write([]byte(`{"status":"success"}`))
 		} else if r.URL.Path == "/api/v1/heartbeat" {
 			receivedHeartbeat = true
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"success"}`))
+			_, _ = w.Write([]byte(`{"status":"success"}`))
 		}
 	}))
 	defer testServer.Close()

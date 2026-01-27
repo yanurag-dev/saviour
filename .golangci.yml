@@ -1,0 +1,21 @@
+linters:
+  disable:
+    - typecheck
+  enable:
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - govet
+
+linters-settings:
+  errcheck:
+    check-blank: true
+    check-type-assertions: false
+
+run:
+  timeout: 5m
+  go: '1.21'
+
+issues:
+  exclude-use-default: false

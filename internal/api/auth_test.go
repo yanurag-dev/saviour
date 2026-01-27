@@ -172,7 +172,7 @@ func TestAuthMiddleware_NoScopesRequired(t *testing.T) {
 
 	handler := config.AuthMiddleware([]string{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}))
 
 	req := httptest.NewRequest("GET", "/api/v1/health", nil)
@@ -461,7 +461,7 @@ func TestIsAllowedOrigin(t *testing.T) {
 func TestLoggingMiddleware(t *testing.T) {
 	handler := LoggingMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("success"))
+		_, _ = w.Write([]byte("success"))
 	}))
 
 	req := httptest.NewRequest("GET", "/api/v1/health", nil)
@@ -491,7 +491,7 @@ func TestMiddlewareChaining(t *testing.T) {
 			authConfig.AuthMiddleware([]string{"metrics:write"})(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("chained"))
+					_, _ = w.Write([]byte("chained"))
 				}),
 			),
 		),

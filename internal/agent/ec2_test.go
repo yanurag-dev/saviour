@@ -39,7 +39,7 @@ func TestGetToken_Success(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(expectedToken))
+		_, _ = w.Write([]byte(expectedToken))
 	}))
 	defer testServer.Close()
 
@@ -132,7 +132,7 @@ func TestFetchMetadata_Success(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(expectedValue))
+		_, _ = w.Write([]byte(expectedValue))
 	}))
 	defer server.Close()
 
@@ -172,22 +172,22 @@ func TestGetEC2Metadata_Success(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "PUT" {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("test-token"))
+			_, _ = w.Write([]byte("test-token"))
 			return
 		}
 
 		if r.Method == "GET" {
 			switch r.URL.Path {
 			case "/instance-id":
-				w.Write([]byte("i-1234567890abcdef0"))
+				_, _ = w.Write([]byte("i-1234567890abcdef0"))
 			case "/instance-type":
-				w.Write([]byte("t3.medium"))
+				_, _ = w.Write([]byte("t3.medium"))
 			case "/region":
-				w.Write([]byte("us-west-2"))
+				_, _ = w.Write([]byte("us-west-2"))
 			case "/az":
-				w.Write([]byte("us-west-2a"))
+				_, _ = w.Write([]byte("us-west-2a"))
 			case "/tags":
-				w.Write([]byte(""))
+				_, _ = w.Write([]byte(""))
 			default:
 				w.WriteHeader(http.StatusOK)
 			}
@@ -247,7 +247,7 @@ func TestGetEC2Metadata_TokenFailure(t *testing.T) {
 func TestFetchTags_EmptyTags(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(""))
+		_, _ = w.Write([]byte(""))
 	}))
 	defer testServer.Close()
 
@@ -278,7 +278,7 @@ func TestFetchTags_EmptyTags(t *testing.T) {
 func TestFetchTags_Success(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Name\nEnvironment\nProject"))
+		_, _ = w.Write([]byte("Name\nEnvironment\nProject"))
 	}))
 	defer testServer.Close()
 
@@ -359,7 +359,7 @@ func TestEC2MetadataClient_ContextCancellation(t *testing.T) {
 func TestEC2MetadataClient_NoToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("some-value"))
+		_, _ = w.Write([]byte("some-value"))
 	}))
 	defer server.Close()
 
