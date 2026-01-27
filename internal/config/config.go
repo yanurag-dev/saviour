@@ -120,6 +120,15 @@ func Load(path string) (*Config, error) {
 		if cfg.Metrics.Docker.Socket == "" {
 			cfg.Metrics.Docker.Socket = "/var/run/docker.sock"
 		}
+
+		// Default to monitoring all containers if no filters are specified
+		if !cfg.Metrics.Docker.MonitorAll &&
+			len(cfg.Metrics.Docker.Filters.Labels) == 0 &&
+			len(cfg.Metrics.Docker.Filters.Names) == 0 &&
+			len(cfg.Metrics.Docker.Filters.Images) == 0 {
+			cfg.Metrics.Docker.MonitorAll = true
+		}
+
 		if cfg.Metrics.Docker.Alerts.Default.CPUThreshold == 0 {
 			cfg.Metrics.Docker.Alerts.Default.CPUThreshold = 80.0
 		}

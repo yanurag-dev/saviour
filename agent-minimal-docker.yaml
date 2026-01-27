@@ -1,0 +1,18 @@
+# Minimal Docker config - should default to monitor_all: true
+agent:
+  name: "minimal-test"
+  collect_interval: 10s
+
+metrics:
+  system: true
+  
+  docker:
+    enabled: true
+    # No monitor_all specified
+    # No filters specified
+    # Should default to monitoring all containers
+
+alerts:
+  cpu_threshold: 80.0
+  memory_threshold: 85.0
+  disk_threshold: 90.0
