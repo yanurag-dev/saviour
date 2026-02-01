@@ -728,6 +728,47 @@ func TestFeature_Success(t *testing.T) {
 
 ---
 
+## 🖥️ Web Dashboard
+
+Saviour includes a production-grade web dashboard for monitoring your infrastructure in real-time.
+
+### Features
+
+- **Agent Overview**: Grid view of all agents with live CPU/memory/disk metrics
+- **Container Monitoring**: Comprehensive table of all containers with filtering and search
+- **Alert Dashboard**: Real-time alerts with severity categorization
+- **Live Charts**: Real-time CPU and memory graphs with historical data
+- **SSE Streaming**: Auto-updating data every 5 seconds via Server-Sent Events
+
+### Quick Start
+
+```bash
+# Install web dependencies
+cd web
+npm install
+
+# Development mode (hot reload)
+npm run dev
+
+# Build for production
+npm run build
+
+# The server will serve the dashboard at http://localhost:8080
+```
+
+### Design
+
+The dashboard features a distinctive **Industrial Terminal** aesthetic:
+- Monospace typography (JetBrains Mono)
+- High-contrast charcoal + amber color scheme
+- Dense information display with breathing room
+- Real-time animations and visual feedback
+- Responsive design (desktop + tablet)
+
+See [web/README.md](web/README.md) for detailed documentation.
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Agent Can't Connect
