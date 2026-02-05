@@ -1,4 +1,4 @@
-.PHONY: help build run clean test deps docker-build docker-run docker-stop docker-clean
+.PHONY: help build build-server build-agent build-web run clean test deps docker-build docker-run docker-stop docker-clean install-web dev-web
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -10,9 +10,25 @@ deps: ## Download dependencies
 	go mod download
 	go mod tidy
 
-build: ## Build the agent binary
+build: build-web build-server build-agent ## Build everything (web + server + agent)
+
+build-server: ## Build the server binary
+	@mkdir -p bin
+	go build -o bin/saviour-server ./cmd/server
+
+build-agent: ## Build the agent binary
 	@mkdir -p bin
 	go build -o bin/saviour-agent ./cmd/agent
+
+build-web: ## Build web dashboard
+	@echo "Building web dashboard..."
+	@cd web && npm install && npm run build
+
+install-web: ## Install web dependencies only
+	@cd web && npm install
+
+dev-web: ## Run web dashboard in dev mode
+	@cd web && npm run dev
 
 run: build ## Build and run the agent with example config
 	./bin/saviour-agent -config examples/agent.yaml

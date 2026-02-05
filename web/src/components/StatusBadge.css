@@ -1,0 +1,93 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all var(--transition-fast);
+}
+
+.status-badge--sm {
+  font-size: 0.7rem;
+  padding: 2px var(--space-xs);
+}
+
+.status-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+/* Online / Running / Healthy */
+.status-badge--online .status-badge__dot,
+.status-badge--running .status-badge__dot,
+.status-badge--healthy .status-badge__dot {
+  background: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+
+.status-badge--online,
+.status-badge--running,
+.status-badge--healthy {
+  color: var(--status-success);
+  border-color: var(--status-success);
+}
+
+/* Offline / Exited / Dead */
+.status-badge--offline .status-badge__dot,
+.status-badge--exited .status-badge__dot,
+.status-badge--dead .status-badge__dot {
+  background: var(--status-error);
+  box-shadow: 0 0 6px var(--status-error);
+}
+
+.status-badge--offline,
+.status-badge--exited,
+.status-badge--dead {
+  color: var(--status-error);
+  border-color: var(--status-error);
+}
+
+/* Warning States */
+.status-badge--unhealthy .status-badge__dot,
+.status-badge--starting .status-badge__dot,
+.status-badge--restarting .status-badge__dot,
+.status-badge--warning .status-badge__dot {
+  background: var(--status-warning);
+  box-shadow: 0 0 6px var(--status-warning);
+}
+
+.status-badge--unhealthy,
+.status-badge--starting,
+.status-badge--restarting,
+.status-badge--warning {
+  color: var(--status-warning);
+  border-color: var(--status-warning);
+}
+
+/* Severity Badges */
+.status-badge--critical .status-badge__dot {
+  background: var(--status-error);
+  box-shadow: 0 0 6px var(--status-error);
+}
+
+.status-badge--critical {
+  color: var(--status-error);
+  border-color: var(--status-error);
+}
+
+.status-badge--info .status-badge__dot {
+  background: var(--status-info);
+  box-shadow: 0 0 6px var(--status-info);
+}
+
+.status-badge--info {
+  color: var(--status-info);
+  border-color: var(--status-info);
+}

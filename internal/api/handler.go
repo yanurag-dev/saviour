@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/anurag/saviour/internal/server"
 	"github.com/anurag/saviour/pkg/metrics"
@@ -199,6 +200,139 @@ func calculateMemoryPercent(usage, limit uint64) float64 {
 		return 0
 	}
 	return float64(usage) / float64(limit) * 100.0
+}
+
+// HandleGetAgents handles GET /api/v1/agents
+func (h *Handler) HandleGetAgents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	agents := h.state.GetAllAgents()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(agents); err != nil {
+		log.Printf("Error encoding agents response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+// HandleGetAgent handles GET /api/v1/agents/{name}
+func (h *Handler) HandleGetAgent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract agent name from URL path
+	agentName := strings.TrimPrefix(r.URL.Path, "/api/v1/agents/")
+	if agentName == "" {
+		http.Error(w, "Agent name required", http.StatusBadRequest)
+		return
+	}
+
+	agent, exists := h.state.GetAgent(agentName)
+	if !exists {
+		http.Error(w, "Agent not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(agent); err != nil {
+		log.Printf("Error encoding agent response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+// HandleGetAlerts handles GET /api/v1/alerts
+func (h *Handler) HandleGetAlerts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	alerts := h.state.GetActiveAlerts()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(alerts); err != nil {
+		log.Printf("Error encoding alerts response: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+// HandleEventsSSE handles GET /api/v1/events (Server-Sent Events)
+func (h *Handler) HandleEventsSSE(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	// Send initial data
+	h.sendSSEUpdate(w, flusher)
+
+	// Create a ticker to send updates every 2 seconds
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	// Listen for client disconnect
+	ctx := r.Context()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("SSE client disconnected")
+			return
+		case <-ticker.C:
+			h.sendSSEUpdate(w, flusher)
+		}
+	}
+}
+
+// sendSSEUpdate sends a single SSE update with current state
+func (h *Handler) sendSSEUpdate(w http.ResponseWriter, flusher http.Flusher) {
+	agents := h.state.GetAllAgents()
+	alerts := h.state.GetActiveAlerts()
+
+	data := map[string]interface{}{
+		"agents": agents,
+		"alerts": alerts,
+		"timestamp": time.Now().Unix(),
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Error marshaling SSE data: %v", err)
+		return
+	}
+
+	// Send SSE message
+	if _, err := w.Write([]byte("data: ")); err != nil {
+		log.Printf("Error writing SSE prefix: %v", err)
+		return
+	}
+	if _, err := w.Write(jsonData); err != nil {
+		log.Printf("Error writing SSE data: %v", err)
+		return
+	}
+	if _, err := w.Write([]byte("\n\n")); err != nil {
+		log.Printf("Error writing SSE suffix: %v", err)
+		return
+	}
+
+	flusher.Flush()
 }
 
 // Helper functions

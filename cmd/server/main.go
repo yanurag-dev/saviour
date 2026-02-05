@@ -96,14 +96,31 @@ func main() {
 	// Health endpoint (no auth required)
 	mux.HandleFunc("/api/v1/health", handler.HandleHealth)
 
-	// Root endpoint
+	// Dashboard API endpoints (no auth required for now - can add read scope later)
+	mux.HandleFunc("/api/v1/agents", handler.HandleGetAgents)
+	mux.HandleFunc("/api/v1/agents/", handler.HandleGetAgent)
+	mux.HandleFunc("/api/v1/alerts", handler.HandleGetAlerts)
+	mux.HandleFunc("/api/v1/events", handler.HandleEventsSSE)
+
+	// Serve static files from web/dist (if exists)
+	fileServer := http.FileServer(http.Dir("./web/dist"))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
+		// API routes are already handled above
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			// Serve index.html for root and index
+			http.ServeFile(w, r, "./web/dist/index.html")
+			return
+		}
+
+		// Check if requesting an API endpoint
+		if len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api" {
+			// API route not found
 			http.NotFound(w, r)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"service":"saviour-server","status":"running"}`))
+
+		// Try serving static file, fallback to index.html for SPA routing
+		fileServer.ServeHTTP(w, r)
 	})
 
 	// Apply middleware
@@ -150,6 +167,10 @@ func main() {
 	log.Printf("  POST /api/v1/metrics/push  - Receive metrics from agents")
 	log.Printf("  POST /api/v1/heartbeat     - Receive heartbeat from agents")
 	log.Printf("  GET  /api/v1/health        - Health check")
+	log.Printf("  GET  /api/v1/agents        - List all agents")
+	log.Printf("  GET  /api/v1/agents/:name  - Get specific agent")
+	log.Printf("  GET  /api/v1/alerts        - List all alerts")
+	log.Printf("  GET  /api/v1/events        - Server-Sent Events stream")
 
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
