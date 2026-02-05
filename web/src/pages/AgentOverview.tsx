@@ -59,47 +59,51 @@ export const AgentOverview: React.FC<AgentOverviewProps> = ({ agents }) => {
             </div>
 
             <div className="agent-card__metrics">
-              <div className="metric-row">
-                <span className="metric-row__label">CPU</span>
-                <div className="metric-row__bar">
-                  <div
-                    className="metric-row__fill"
-                    style={{
-                      width: `${agent.system_metrics.cpu.usage_percent}%`,
-                      background: agent.system_metrics.cpu.usage_percent > 80
-                        ? 'var(--status-error)'
-                        : agent.system_metrics.cpu.usage_percent > 60
-                        ? 'var(--status-warning)'
-                        : 'var(--status-success)'
-                    }}
-                  />
+              {agent.system_metrics?.cpu && (
+                <div className="metric-row">
+                  <span className="metric-row__label">CPU</span>
+                  <div className="metric-row__bar">
+                    <div
+                      className="metric-row__fill"
+                      style={{
+                        width: `${agent.system_metrics.cpu.usage_percent || 0}%`,
+                        background: (agent.system_metrics.cpu.usage_percent || 0) > 80
+                          ? 'var(--status-error)'
+                          : (agent.system_metrics.cpu.usage_percent || 0) > 60
+                          ? 'var(--status-warning)'
+                          : 'var(--status-success)'
+                      }}
+                    />
+                  </div>
+                  <span className="metric-row__value">
+                    {formatPercentage(agent.system_metrics.cpu.usage_percent || 0)}
+                  </span>
                 </div>
-                <span className="metric-row__value">
-                  {formatPercentage(agent.system_metrics.cpu.usage_percent)}
-                </span>
-              </div>
+              )}
 
-              <div className="metric-row">
-                <span className="metric-row__label">MEM</span>
-                <div className="metric-row__bar">
-                  <div
-                    className="metric-row__fill"
-                    style={{
-                      width: `${agent.system_metrics.memory.used_percent}%`,
-                      background: agent.system_metrics.memory.used_percent > 85
-                        ? 'var(--status-error)'
-                        : agent.system_metrics.memory.used_percent > 70
-                        ? 'var(--status-warning)'
-                        : 'var(--status-success)'
-                    }}
-                  />
+              {agent.system_metrics?.memory && (
+                <div className="metric-row">
+                  <span className="metric-row__label">MEM</span>
+                  <div className="metric-row__bar">
+                    <div
+                      className="metric-row__fill"
+                      style={{
+                        width: `${agent.system_metrics.memory.used_percent || 0}%`,
+                        background: (agent.system_metrics.memory.used_percent || 0) > 85
+                          ? 'var(--status-error)'
+                          : (agent.system_metrics.memory.used_percent || 0) > 70
+                          ? 'var(--status-warning)'
+                          : 'var(--status-success)'
+                      }}
+                    />
+                  </div>
+                  <span className="metric-row__value">
+                    {formatPercentage(agent.system_metrics.memory.used_percent || 0)}
+                  </span>
                 </div>
-                <span className="metric-row__value">
-                  {formatPercentage(agent.system_metrics.memory.used_percent)}
-                </span>
-              </div>
+              )}
 
-              {agent.system_metrics.disk[0] && (
+              {agent.system_metrics?.disk && agent.system_metrics.disk.length > 0 && (
                 <div className="metric-row">
                   <span className="metric-row__label">DISK</span>
                   <div className="metric-row__bar">
@@ -124,9 +128,9 @@ export const AgentOverview: React.FC<AgentOverviewProps> = ({ agents }) => {
 
             <div className="agent-card__footer">
               <div className="agent-card__info">
-                <span>{agent.system_metrics.system_info.platform}</span>
+                <span>{agent.system_metrics?.system_info?.platform || 'N/A'}</span>
                 <span>•</span>
-                <span>↑ {formatUptime(agent.system_metrics.system_info.uptime)}</span>
+                <span>↑ {formatUptime(agent.system_metrics?.system_info?.uptime || 0)}</span>
                 <span>•</span>
                 <span>{agent.containers?.length || 0} containers</span>
               </div>
