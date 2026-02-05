@@ -113,6 +113,11 @@ func CORSMiddleware(config *CORSConfig) func(http.Handler) http.Handler {
 
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			
+			// For SSE requests, ensure proper CORS headers
+			if r.URL.Path == "/api/v1/events" {
+				w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
+			}
 
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
