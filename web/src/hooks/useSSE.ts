@@ -28,13 +28,19 @@ export function useSSE() {
           }
         };
 
-        eventSource.onerror = () => {
+        eventSource.onerror = (err) => {
           setIsConnected(false);
-          setError(new Error('SSE connection failed'));
-          eventSource.close();
-
-          // Reconnect after 5 seconds
-          setTimeout(connect, 5000);
+          const errorMsg = eventSource.readyState === EventSource.CLOSED 
+            ? 'SSE connection closed. Check CORS and server configuration.'
+            : 'SSE connection error';
+          setError(new Error(errorMsg));
+          
+          // Only reconnect if connection was established before
+          if (eventSource.readyState === EventSource.CLOSED) {
+            eventSource.close();
+            // Reconnect after 5 seconds
+            setTimeout(connect, 5000);
+          }
         };
       } catch (err) {
         setError(err as Error);

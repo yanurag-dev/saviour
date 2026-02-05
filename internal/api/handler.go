@@ -272,7 +272,8 @@ func (h *Handler) HandleEventsSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// CORS headers are handled by CORSMiddleware, but we need to ensure they're set for SSE
+	// The middleware will set Access-Control-Allow-Origin based on config
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
